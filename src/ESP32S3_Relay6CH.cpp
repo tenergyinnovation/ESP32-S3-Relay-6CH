@@ -35,10 +35,13 @@ bool ESP32S3_Relay::_validateChannel(uint8_t channel) {
 }
 
 uint8_t ESP32S3_Relay::_normalizeChannel(uint8_t channel) {
+    // Accept both 1-6 (user format) and 0-5 (array index format)
     if (channel >= 1 && channel <= CHANNELS) {
         return channel - 1;  // Convert 1-6 to 0-5
+    } else if (channel < CHANNELS) {
+        return channel;  // Already 0-5
     }
-    return channel;  // Already 0-5 or invalid
+    return 0;  // Invalid: default to 0
 }
 
 bool ESP32S3_Relay::set(uint8_t channel, RelayState state) {
@@ -56,7 +59,17 @@ bool ESP32S3_Relay::set(uint8_t channel, RelayState state) {
             _relayState &= ~(1 << channel);
             return true;
         case RELAY_TOGGLE:
-            return toggle(channel + 1);
+            // Toggle the relay state directly
+            if ((_relayState >> channel) & 1) {
+                // Currently ON, turn OFF
+                digitalWrite(RELAY_PINS[channel], LOW);
+                _relayState &= ~(1 << channel);
+            } else {
+                // Currently OFF, turn ON
+                digitalWrite(RELAY_PINS[channel], HIGH);
+                _relayState |= (1 << channel);
+            }
+            return true;
         default:
             return false;
     }
@@ -71,14 +84,8 @@ bool ESP32S3_Relay::off(uint8_t channel) {
 }
 
 bool ESP32S3_Relay::toggle(uint8_t channel) {
-    if (!_validateChannel(channel)) return false;
-    channel = _normalizeChannel(channel);
-    
-    if (getState(channel + 1) == RELAY_ON) {
-        return off(channel + 1);
-    } else {
-        return on(channel + 1);
-    }
+    // Delegate to set() to avoid double-normalization
+    return set(channel, RELAY_TOGGLE);
 }
 
 ESP32S3_Relay::RelayState ESP32S3_Relay::getState(uint8_t channel) {
@@ -333,31 +340,45 @@ void ESP32S3_RGB::setBrightness(uint8_t brightness) {
 }
 
 void ESP32S3_RGB::tickRedLED(float seconds) {
-    blink(COLOR_RED, (uint16_t)(seconds * 1000), 100);
+    // Split total time equally between ON and OFF
+    uint16_t halfTime = (uint16_t)(seconds * 1000 / 2);
+    blink(COLOR_RED, halfTime, halfTime);
 }
 
 void ESP32S3_RGB::tickGreenLED(float seconds) {
-    blink(COLOR_GREEN, (uint16_t)(seconds * 1000), 100);
+    // Split total time equally between ON and OFF
+    uint16_t halfTime = (uint16_t)(seconds * 1000 / 2);
+    blink(COLOR_GREEN, halfTime, halfTime);
 }
 
 void ESP32S3_RGB::tickBlueLED(float seconds) {
-    blink(COLOR_BLUE, (uint16_t)(seconds * 1000), 100);
+    // Split total time equally between ON and OFF
+    uint16_t halfTime = (uint16_t)(seconds * 1000 / 2);
+    blink(COLOR_BLUE, halfTime, halfTime);
 }
 
 void ESP32S3_RGB::tickYellowLED(float seconds) {
-    blink(COLOR_YELLOW, (uint16_t)(seconds * 1000), 100);
+    // Split total time equally between ON and OFF
+    uint16_t halfTime = (uint16_t)(seconds * 1000 / 2);
+    blink(COLOR_YELLOW, halfTime, halfTime);
 }
 
 void ESP32S3_RGB::tickPurpleLED(float seconds) {
-    blink(COLOR_MAGENTA, (uint16_t)(seconds * 1000), 100);
+    // Split total time equally between ON and OFF
+    uint16_t halfTime = (uint16_t)(seconds * 1000 / 2);
+    blink(COLOR_MAGENTA, halfTime, halfTime);
 }
 
 void ESP32S3_RGB::tickOrangeLED(float seconds) {
-    blink(COLOR_MAGENTA, (uint16_t)(seconds * 1000), 100);  // Fallback to magenta
+    // Split total time equally between ON and OFF (fallback to magenta)
+    uint16_t halfTime = (uint16_t)(seconds * 1000 / 2);
+    blink(COLOR_MAGENTA, halfTime, halfTime);
 }
 
 void ESP32S3_RGB::tickWhiteLED(float seconds) {
-    blink(COLOR_WHITE, (uint16_t)(seconds * 1000), 100);
+    // Split total time equally between ON and OFF
+    uint16_t halfTime = (uint16_t)(seconds * 1000 / 2);
+    blink(COLOR_WHITE, halfTime, halfTime);
 }
 
 void ESP32S3_RGB::update() {
@@ -372,7 +393,7 @@ void ESP32S3_RGB::update() {
             uint32_t phase = elapsed % period;
             if (phase < _blinkOnTime) {
                 // Light on
-                if (_updateLED != nullptr) _updateLED();
+                _updateLED();
             } else {
                 // Light off
                 if (_neoPixel) {
@@ -633,9 +654,20 @@ void ESP32S3_Relay6CH::TickWhiteLED(float seconds) {
 }
 
 void ESP32S3_Relay6CH::buzzer_beep(int times) {
+    // Direct PWM control for audible buzzer feedback
+    // Beep pattern: 100ms ON, 100ms OFF
+    const uint16_t BEEP_DURATION = 100;        // milliseconds
+    const uint16_t SILENCE_DURATION = 100;    // milliseconds
+    const uint8_t BEEP_VOLUME = 200;           // 0-255 (200 = 78% duty cycle)
+    
     for (int i = 0; i < times; i++) {
-        _buzzer.beep(100, 255);
-        delay(200);  // 100ms beep + 100ms silence
+        // Turn buzzer ON (use delay() instead of delayMicroseconds)
+        ledcWrite(ESP32S3_Buzzer::PWM_CHANNEL, BEEP_VOLUME);
+        delay(BEEP_DURATION);  // Use millisecond delay for stable PWM signal
+        
+        // Turn buzzer OFF
+        ledcWrite(ESP32S3_Buzzer::PWM_CHANNEL, 0);
+        delay(SILENCE_DURATION);  // Silence between beeps
     }
 }
 
@@ -644,6 +676,21 @@ void ESP32S3_Relay6CH::buzzerBeep(uint8_t times, uint16_t duration, uint16_t int
         _buzzer.beep(duration, 255);
         delay(duration + interval);
     }
+}
+
+/***********************************************************************
+ * FUNCTION:    buzzer_test
+ * DESCRIPTION: Diagnostic function to test buzzer hardware directly.
+ *              Generates a continuous tone for 2 seconds.
+ * PARAMETERS:  None
+ * RETURNED:    None
+ * NOTE:        Use this to test if buzzer hardware is working correctly.
+ ***********************************************************************/
+void ESP32S3_Relay6CH::buzzer_test() {
+    // Generate continuous tone for 2 seconds
+    ledcWrite(ESP32S3_Buzzer::PWM_CHANNEL, 200);  // Set duty cycle
+    delay(2000);  // Keep tone for 2 seconds
+    ledcWrite(ESP32S3_Buzzer::PWM_CHANNEL, 0);    // Turn off
 }
 
 bool ESP32S3_Relay6CH::setupRS485(uint32_t baudRate) {
@@ -673,7 +720,7 @@ String ESP32S3_Relay6CH::getBoardInfo() {
     info += "Board: " + String(BOARD_NAME) + "\n";
     info += "Library Version: " + String(LIBRARY_VERSION) + "\n";
     info += "Relay Channels: " + String(RELAY_CHANNELS) + "\n";
-    info += "Status: " + (_status == STATUS_OK ? "OK" : "ERROR") + "\n";
+    info += "Status: " + String(_status == STATUS_OK ? "OK" : "ERROR") + "\n";
     info += "Relay Status: " + _relay.getStatusString() + "\n";
     return info;
 }

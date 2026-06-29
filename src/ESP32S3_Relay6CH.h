@@ -28,14 +28,14 @@
  * SECTION 1: RELAY CONTROLLER - 6 Channels
  * ============================================================
  * Controls 6 independent relay channels with optocoupler isolation
- * - Relay 1: GPIO1  | Relay 4: GPIO41
- * - Relay 2: GPIO2  | Relay 5: GPIO40
- * - Relay 3: GPIO42 | Relay 6: GPIO39
+ * - Relay 1: GPIO1  | Relay 4: GPIO42
+ * - Relay 2: GPIO2  | Relay 5: GPIO45
+ * - Relay 3: GPIO41 | Relay 6: GPIO46
  */
 class ESP32S3_Relay {
 public:
     // GPIO pin definitions for relay channels
-    static constexpr uint8_t RELAY_PINS[6] = {1, 2, 42, 41, 40, 39};
+    static constexpr uint8_t RELAY_PINS[6] = {1, 2, 41, 42, 45, 46};
     static constexpr uint8_t CHANNELS = 6;
 
     // Relay state definitions
@@ -401,6 +401,14 @@ public:
      ***********************************************************************/
     void buzzer_beep(int times);
     void buzzerBeep(uint8_t times = 1, uint16_t duration = 100, uint16_t interval = 100);
+    
+    /***********************************************************************
+     * FUNCTION:    buzzer_test
+     * DESCRIPTION: Diagnostic function to test buzzer hardware.
+     * PARAMETERS:  None
+     * RETURNED:    None
+     ***********************************************************************/
+    void buzzer_test();
 
     /**
      * ========== RS485 INTERFACE METHODS ==========
@@ -452,5 +460,3 @@ private:
     void initLED();
     void initBuzzer();
 };
-
-#endif  // ESP32S3_RELAY6CH_H
