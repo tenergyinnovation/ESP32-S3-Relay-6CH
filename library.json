@@ -1,0 +1,40 @@
+{
+  "name": "ESP32-S3-Relay-6CH",
+  "version": "1.0.0",
+  "description": "Complete library for Waveshare ESP32-S3-Relay-6CH industrial relay control board",
+  "keywords": [
+    "esp32",
+    "relay",
+    "control",
+    "iot",
+    "industrial",
+    "automation",
+    "wifi",
+    "bluetooth",
+    "rs485"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tenergyinnovation/ESP32-S3-Relay-6CH.git"
+  },
+  "authors": [
+    {
+      "name": "Tenergy Innovation Co., Ltd.",
+      "email": "uten.boonliam@tenergyinnovation.co.th",
+      "url": "https://tenergyinnovation.co.th"
+    }
+  ],
+  "maintainers": [
+    {
+      "name": "Tenergy Innovation Co., Ltd.",
+      "email": "uten.boonliam@tenergyinnovation.co.th"
+    }
+  ],
+  "license": "MIT",
+  "frameworks": "arduino",
+  "platforms": "espressif32",
+  "homepage": "https://www.waveshare.com/wiki/ESP32-S3-Relay-6CH",
+  "dependencies": {
+    "adafruit/Adafruit NeoPixel": "^1.10.5"
+  }
+}
