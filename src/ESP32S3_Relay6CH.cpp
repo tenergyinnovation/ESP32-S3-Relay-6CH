@@ -13,6 +13,21 @@
 constexpr uint8_t ESP32S3_Relay::RELAY_PINS[6];
 
 // ============================================================
+// STATIC MEMBER INITIALIZATIONS FOR ESP32S3_RGB
+// ============================================================
+// Ticker objects for background LED animations
+Ticker ESP32S3_RGB::tickerRed;
+Ticker ESP32S3_RGB::tickerGreen;
+Ticker ESP32S3_RGB::tickerBlue;
+Ticker ESP32S3_RGB::tickerYellow;
+Ticker ESP32S3_RGB::tickerPurple;
+Ticker ESP32S3_RGB::tickerOrange;
+Ticker ESP32S3_RGB::tickerWhite;
+
+// Static pointer to current instance for callback access
+ESP32S3_RGB *ESP32S3_RGB::_instance = nullptr;
+
+// ============================================================
 // SECTION 1: RELAY CONTROLLER IMPLEMENTATION
 // ============================================================
 
@@ -280,7 +295,12 @@ void ESP32S3_RS485::_processRxBuffer() {
 ESP32S3_RGB::ESP32S3_RGB() 
     : _currentColor(0), _targetColor(0), _brightness(255),
       _lastUpdateTime(0), _blinkOnTime(500), _blinkOffTime(500),
-      _blinkCount(0), _isBlinking(false), _blinkStartTime(0), _neoPixel(nullptr) {}
+      _blinkCount(0), _isBlinking(false), _blinkStartTime(0), _neoPixel(nullptr) {
+    // Store instance pointer for static callbacks
+    if (_instance == nullptr) {
+        _instance = this;
+    }
+}
 
 bool ESP32S3_RGB::begin() {
     _neoPixel = new Adafruit_NeoPixel(NUM_LEDS, RGB_PIN, NEO_GRB + NEO_KHZ800);
@@ -288,6 +308,10 @@ bool ESP32S3_RGB::begin() {
         _neoPixel->begin();
         _neoPixel->clear();
         _neoPixel->show();
+        // Ensure instance is set
+        if (_instance == nullptr) {
+            _instance = this;
+        }
         return true;
     }
     return false;
@@ -330,55 +354,105 @@ void ESP32S3_RGB::pulse(uint32_t color, uint16_t period) {
 }
 
 void ESP32S3_RGB::stop() {
-    _isBlinking = false;
-    _currentColor = COLOR_OFF;
-    _updateLED();
+    // Use internal stop method which detaches all Tickers
+    _stopAllLEDs();
 }
 
 void ESP32S3_RGB::setBrightness(uint8_t brightness) {
     _brightness = brightness;
 }
 
+// ============================================================
+// STOP ALL LED ANIMATIONS HELPER METHOD
+// ============================================================
+// Stop all Ticker objects - called before starting a new animation
+void ESP32S3_RGB::_stopAllLEDs() {
+    tickerRed.detach();
+    tickerGreen.detach();
+    tickerBlue.detach();
+    tickerYellow.detach();
+    tickerPurple.detach();
+    tickerOrange.detach();
+    tickerWhite.detach();
+    _currentColor = COLOR_OFF;
+    _updateLED();
+}
+
 void ESP32S3_RGB::tickRedLED(float seconds) {
-    // Split total time equally between ON and OFF
-    uint16_t halfTime = (uint16_t)(seconds * 1000 / 2);
-    blink(COLOR_RED, halfTime, halfTime);
+    if (seconds <= 0) {
+        _stopAllLEDs();
+    } else {
+        _stopAllLEDs();  // Stop all other LED animations first
+        _currentColor = COLOR_RED;
+        _updateLED();
+        tickerRed.attach(seconds / 2.0, _toggleRedLED);
+    }
 }
 
 void ESP32S3_RGB::tickGreenLED(float seconds) {
-    // Split total time equally between ON and OFF
-    uint16_t halfTime = (uint16_t)(seconds * 1000 / 2);
-    blink(COLOR_GREEN, halfTime, halfTime);
+    if (seconds <= 0) {
+        _stopAllLEDs();
+    } else {
+        _stopAllLEDs();  // Stop all other LED animations first
+        _currentColor = COLOR_GREEN;
+        _updateLED();
+        tickerGreen.attach(seconds / 2.0, _toggleGreenLED);
+    }
 }
 
 void ESP32S3_RGB::tickBlueLED(float seconds) {
-    // Split total time equally between ON and OFF
-    uint16_t halfTime = (uint16_t)(seconds * 1000 / 2);
-    blink(COLOR_BLUE, halfTime, halfTime);
+    if (seconds <= 0) {
+        _stopAllLEDs();
+    } else {
+        _stopAllLEDs();  // Stop all other LED animations first
+        _currentColor = COLOR_BLUE;
+        _updateLED();
+        tickerBlue.attach(seconds / 2.0, _toggleBlueLED);
+    }
 }
 
 void ESP32S3_RGB::tickYellowLED(float seconds) {
-    // Split total time equally between ON and OFF
-    uint16_t halfTime = (uint16_t)(seconds * 1000 / 2);
-    blink(COLOR_YELLOW, halfTime, halfTime);
+    if (seconds <= 0) {
+        _stopAllLEDs();
+    } else {
+        _stopAllLEDs();  // Stop all other LED animations first
+        _currentColor = COLOR_YELLOW;
+        _updateLED();
+        tickerYellow.attach(seconds / 2.0, _toggleYellowLED);
+    }
 }
 
 void ESP32S3_RGB::tickPurpleLED(float seconds) {
-    // Split total time equally between ON and OFF
-    uint16_t halfTime = (uint16_t)(seconds * 1000 / 2);
-    blink(COLOR_MAGENTA, halfTime, halfTime);
+    if (seconds <= 0) {
+        _stopAllLEDs();
+    } else {
+        _stopAllLEDs();  // Stop all other LED animations first
+        _currentColor = COLOR_MAGENTA;
+        _updateLED();
+        tickerPurple.attach(seconds / 2.0, _togglePurpleLED);
+    }
 }
 
 void ESP32S3_RGB::tickOrangeLED(float seconds) {
-    // Split total time equally between ON and OFF (fallback to magenta)
-    uint16_t halfTime = (uint16_t)(seconds * 1000 / 2);
-    blink(COLOR_MAGENTA, halfTime, halfTime);
+    if (seconds <= 0) {
+        _stopAllLEDs();
+    } else {
+        _stopAllLEDs();  // Stop all other LED animations first
+        _currentColor = COLOR_MAGENTA;  // Fallback to magenta for orange
+        _updateLED();
+        tickerOrange.attach(seconds / 2.0, _toggleOrangeLED);
+    }
 }
 
 void ESP32S3_RGB::tickWhiteLED(float seconds) {
-    // Split total time equally between ON and OFF
-    uint16_t halfTime = (uint16_t)(seconds * 1000 / 2);
-    blink(COLOR_WHITE, halfTime, halfTime);
+    if (seconds <= 0) {
+        _stopAllLEDs();
+    } else {
+        _stopAllLEDs();  // Stop all other LED animations first
+        _currentColor = COLOR_WHITE;
+        _updateLED();
+        tickerWhite.attach(seconds / 2.0, _toggleWhiteLED);
+    }
 }
 
 void ESP32S3_RGB::update() {
@@ -430,6 +504,66 @@ uint32_t ESP32S3_RGB::_rgbToGrb(uint32_t rgbColor) {
     uint8_t g = (rgbColor >> 8) & 0xFF;
     uint8_t b = rgbColor & 0xFF;
     return (g << 16) | (r << 8) | b;
+}
+
+// ============================================================
+// STATIC CALLBACK FUNCTIONS FOR TICKER-BASED LED ANIMATIONS
+// ============================================================
+// These functions are called by Ticker timers to toggle LED states
+
+void ESP32S3_RGB::_toggleRedLED() {
+    if (_instance) {
+        _instance->_toggleLED(COLOR_RED);
+    }
+}
+
+void ESP32S3_RGB::_toggleGreenLED() {
+    if (_instance) {
+        _instance->_toggleLED(COLOR_GREEN);
+    }
+}
+
+void ESP32S3_RGB::_toggleBlueLED() {
+    if (_instance) {
+        _instance->_toggleLED(COLOR_BLUE);
+    }
+}
+
+void ESP32S3_RGB::_toggleYellowLED() {
+    if (_instance) {
+        _instance->_toggleLED(COLOR_YELLOW);
+    }
+}
+
+void ESP32S3_RGB::_togglePurpleLED() {
+    if (_instance) {
+        _instance->_toggleLED(COLOR_MAGENTA);
+    }
+}
+
+void ESP32S3_RGB::_toggleOrangeLED() {
+    if (_instance) {
+        _instance->_toggleLED(COLOR_MAGENTA);  // Fallback to magenta
+    }
+}
+
+void ESP32S3_RGB::_toggleWhiteLED() {
+    if (_instance) {
+        _instance->_toggleLED(COLOR_WHITE);
+    }
+}
+
+// ============================================================
+// HELPER METHOD FOR TOGGLING LED DURING TICKER ANIMATION
+// ============================================================
+void ESP32S3_RGB::_toggleLED(uint32_t color) {
+    // Toggle between the target color and OFF
+    if (_currentColor == COLOR_OFF) {
+        _currentColor = color;
+    } else {
+        _currentColor = COLOR_OFF;
+    }
+    _updateLED();
 }
 
 // ============================================================

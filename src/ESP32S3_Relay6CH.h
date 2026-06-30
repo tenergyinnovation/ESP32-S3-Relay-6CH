@@ -3,8 +3,9 @@
  * Description  :     Unified library for ESP32-S3-Relay-6CH board
  * Author       :     Tenergy Innovation Co., Ltd.
  * Date         :     29 Jun 2026
- * Revision     :     1.0.0
+ * Revision     :     1.0.1
  * Rev1.0.0     :     - Created for ESP32-S3-Relay-6CH [29-06-2026]
+ * Rev1.0.1     :     - Fix TickerLED animations [30-06-2026 15:28]
  * Email        :     uten.boonliam@tenergyinnovation.co.th
  * 
  * Board Info:
@@ -22,6 +23,7 @@
 #include <HardwareSerial.h>
 #include <Wire.h>
 #include <Adafruit_NeoPixel.h>
+#include <Ticker.h>
 
 /**
  * ============================================================
@@ -249,11 +251,38 @@ private:
     // NeoPixel object pointer for WS2812B LED
     Adafruit_NeoPixel *_neoPixel;
 
+    // Ticker objects for background LED animations (one for each color)
+    static Ticker tickerRed;
+    static Ticker tickerGreen;
+    static Ticker tickerBlue;
+    static Ticker tickerYellow;
+    static Ticker tickerPurple;
+    static Ticker tickerOrange;
+    static Ticker tickerWhite;
+
+    // Static callback functions for Ticker interrupts
+    static void _toggleRedLED();
+    static void _toggleGreenLED();
+    static void _toggleBlueLED();
+    static void _toggleYellowLED();
+    static void _togglePurpleLED();
+    static void _toggleOrangeLED();
+    static void _toggleWhiteLED();
+
+    // Static pointer to current instance for callback access
+    static ESP32S3_RGB *_instance;
+
     // Helper methods
     void _initializeGPIO();
     void _updateLED();
     void _applyBrightness(uint8_t &r, uint8_t &g, uint8_t &b);
     uint32_t _rgbToGrb(uint32_t rgbColor);
+    
+    // Stop all LED animations (called before starting new animation)
+    void _stopAllLEDs();
+    
+    // Internal toggle methods
+    void _toggleLED(uint32_t color);
 };
 
 /**
@@ -344,7 +373,7 @@ public:
     static constexpr const char* BOARD_NAME = "ESP32-S3-Relay-6CH";
     static constexpr uint8_t RELAY_CHANNELS = 6;
     static constexpr uint16_t MAX_BUFFER_SIZE = 256;
-    static constexpr const char* LIBRARY_VERSION = "1.0.0";
+    static constexpr const char* LIBRARY_VERSION = "1.0.1";
 
     // Status codes
     enum Status : uint8_t {
